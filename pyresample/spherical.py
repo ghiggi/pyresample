@@ -41,7 +41,7 @@ def _xyz_to_vertices(x, y, z):
     If x, y, z are np.array with shape nx1, it creates a nx3 np.array.
     """
     if x.ndim == 0:
-        vertices = np.array([x, y, z])
+        vertices = np.asarray([x, y, z])
     else:
         vertices = np.vstack([x, y, z]).T
     return vertices
@@ -131,6 +131,12 @@ class SCoordinate(object):
         lon, lat = _check_lon_lat(lon, lat)
         self.lon = _unwrap_radians(lon)
         self.lat = lat
+        # Intialize cartesian xyz coordinates
+        x = np.cos(self.lat) * np.cos(self.lon)
+        y = np.cos(self.lat) * np.sin(self.lon)
+        z = np.sin(self.lat)
+        vertices = _xyz_to_vertices(x, y, z)
+        self._cart = CCoordinate(vertices)
 
     @property
     def vertices(self):
@@ -156,32 +162,29 @@ class SCoordinate(object):
         - the cross product between points lying at the equator gives a zero vector.
         - the cross product between points lying at the poles.
         """
-        lat1 = self.lat
-        lon1 = self.lon
-        lat2 = point.lat
-        lon2 = point.lon
+        return self._cart.cross(point._cart)
+        # lat1 = self.lat
+        # lon1 = self.lon
+        # lat2 = point.lat
+        # lon2 = point.lon
 
-        ad = np.sin(lat1 - lat2) * np.cos((lon1 - lon2) / 2.0)
-        be = np.sin(lat1 + lat2) * np.sin((lon1 - lon2) / 2.0)
-        c = np.sin((lon1 + lon2) / 2.0)
-        f = np.cos((lon1 + lon2) / 2.0)
-        g = np.cos(lat1)
-        h = np.cos(lat2)
-        i = np.sin(lon2 - lon1)
-        x = -ad * c + be * f
-        y = ad * f + be * c
-        z = g * h * i
-        vertices = _xyz_to_vertices(x, y, z)
-        res = CCoordinate(vertices)
-        return res
+        # ad = np.sin(lat1 - lat2) * np.cos((lon1 - lon2) / 2.0)
+        # be = np.sin(lat1 + lat2) * np.sin((lon1 - lon2) / 2.0)
+        # c = np.sin((lon1 + lon2) / 2.0)
+        # f = np.cos((lon1 + lon2) / 2.0)
+        # g = np.cos(lat1)
+        # h = np.cos(lat2)
+        # i = np.sin(lon2 - lon1)
+        # x = -ad * c + be * f
+        # y = ad * f + be * c
+        # z = g * h * i
+        # vertices = _xyz_to_vertices(x, y, z)
+        # res = CCoordinate(vertices)
+        # return res
 
     def to_cart(self):
         """Convert to cartesian."""
-        x = np.cos(self.lat) * np.cos(self.lon)
-        y = np.cos(self.lat) * np.sin(self.lon)
-        z = np.sin(self.lat)
-        vertices = _xyz_to_vertices(x, y, z)
-        return CCoordinate(vertices)
+        return self._cart
 
     def distance(self, point):
         """Get distance using Vincenty formula.
@@ -277,7 +280,7 @@ class CCoordinate(object):
     """Cartesian coordinates."""
 
     def __init__(self, cart):
-        self.cart = np.array(cart)
+        self.cart = np.asarray(cart)
 
     def norm(self):
         """Get Euclidean norm of the vector."""
@@ -332,7 +335,7 @@ class CCoordinate(object):
         try:
             return CCoordinate(self.cart + other.cart)
         except AttributeError:
-            return CCoordinate(self.cart + np.array(other))
+            return CCoordinate(self.cart + np.asarray(other))
 
     def __radd__(self, other):
         """Add."""
@@ -343,7 +346,7 @@ class CCoordinate(object):
         try:
             return CCoordinate(self.cart * other.cart)
         except AttributeError:
-            return CCoordinate(self.cart * np.array(other))
+            return CCoordinate(self.cart * np.asarray(other))
 
     def __rmul__(self, other):
         """Multiply."""
@@ -544,9 +547,9 @@ class SphPolygon:
         self.lon = _unwrap_radians(self.vertices[:, 0])
         self.lat = self.vertices[:, 1]
         self.radius = radius
-        self.cvertices = np.array([np.cos(self.lat) * np.cos(self.lon),
-                                   np.cos(self.lat) * np.sin(self.lon),
-                                   np.sin(self.lat)]).T * radius
+        self.cvertices = np.asarray([np.cos(self.lat) * np.cos(self.lon),
+                                     np.cos(self.lat) * np.sin(self.lon),
+                                     np.sin(self.lat)]).T * radius
         self.x__ = self.cvertices[:, 0]
         self.y__ = self.cvertices[:, 1]
         self.z__ = self.cvertices[:, 2]
